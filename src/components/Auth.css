@@ -1,0 +1,98 @@
+.auth {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #00356b 0%, #004080 50%, #002244 100%);
+}
+
+.auth-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 2.5rem;
+  width: 100%;
+  max-width: 360px;
+  box-shadow: 0 20px 60px rgba(0, 53, 107, 0.3);
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 1.75rem;
+}
+
+.auth-header h1 {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  color: #00356b;
+  font-size: 2rem;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+
+.auth-subtitle {
+  color: #6b7c8f;
+  font-size: 0.85rem;
+  margin: 0.25rem 0 0;
+  letter-spacing: 0.15em;
+}
+
+.auth-form input {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1rem;
+  border: 2px solid #e0e6ed;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.auth-form input:focus {
+  outline: none;
+  border-color: #00356b;
+}
+
+.auth-form button[type="submit"] {
+  width: 100%;
+  padding: 0.9rem;
+  background: #00356b;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.auth-form button[type="submit"]:hover:not(:disabled) {
+  background: #004080;
+}
+
+.auth-form button[type="submit"]:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.auth-error {
+  color: #c41e3a;
+  font-size: 0.9rem;
+  margin: -0.5rem 0 0.75rem;
+}
+
+.auth-switch {
+  display: block;
+  width: 100%;
+  margin-top: 1rem;
+  padding: 0.5rem;
+  background: none;
+  border: none;
+  color: #00356b;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.auth-switch:hover {
+  color: #004080;
+}

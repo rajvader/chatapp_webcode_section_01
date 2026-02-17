@@ -1,70 +1,84 @@
-# Getting Started with Create React App
+# Chat App
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A React chatbot with Gemini AI, user auth, and MongoDB persistence. Yale-inspired styling with streaming responses and image support.
 
-## Available Scripts
+## How It Works
 
-In the project directory, you can run:
+- **Frontend (React)** – Login/create account, chat UI with streaming, drag-and-drop images
+- **Backend (Express)** – REST API for users and messages, connects to MongoDB
+- **AI (Gemini)** – Chat responses streamed in real time
+- **Storage (MongoDB)** – Users and messages stored in `chatapp` database
 
-### `npm start`
+## API Keys & Environment Variables
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+Create a `.env` file in the project root with:
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `REACT_APP_GEMINI_API_KEY` | Yes | Google Gemini API key for chat. Get one at [Google AI Studio](https://aistudio.google.com/apikey). |
+| `REACT_APP_MONGODB_URI` | Yes | MongoDB Atlas connection string. Format: `mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/` |
 
-### `npm test`
+The backend also accepts `MONGODB_URI` or `REACT_APP_MONGO_URI` if you prefer those names.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### Example `.env`
 
-### `npm run build`
+```
+REACT_APP_GEMINI_API_KEY=AIzaSy...
+REACT_APP_MONGODB_URI=mongodb+srv://user:password@cluster.mongodb.net/
+```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## MongoDB Setup
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+1. Create a [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) account and cluster.
+2. Get your connection string (Database → Connect → Drivers).
+3. Put it in `.env` as `REACT_APP_MONGODB_URI`.
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+The app creates the `chatapp` database and `users` and `messages` collections automatically on first use.
 
-### `npm run eject`
+## Running the App
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+```bash
+npm install
+npm start
+```
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+This starts:
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+- **Backend** – http://localhost:3001  
+- **Frontend** – http://localhost:3000  
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+Use the app at **http://localhost:3000**. The React dev server proxies `/api` requests to the backend.
 
-## Learn More
+### Verify Backend
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+- http://localhost:3001 – Server status page  
+- http://localhost:3001/api/status – JSON with `usersCount` and `messagesCount`
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## Features
 
-### Code Splitting
+- **Create account / Login** – Username + password, hashed with bcrypt
+- **Chat** – Streaming Gemini responses
+- **Image support** – Drag images into the chat
+- **History** – Messages saved to MongoDB and loaded on login
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## Chat System Prompt
 
-### Analyzing the Bundle Size
+The AI’s system instructions are loaded from **`public/prompt_chat.txt`**. Edit this file to change the assistant’s behavior (tone, role, format, etc.). Changes take effect on the next message; no rebuild needed.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+### How to Get a Good Persona Prompt (Make the AI Sound Like Someone)
 
-### Making a Progressive Web App
+To make the AI sound like a specific person (celebrity, character, or role), ask your AI assistant or prompt engineer to do the following:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+1. **Pull a bio** – “Look up [person’s name] on Wikipedia and summarize their background, career, and key facts.”
 
-### Advanced Configuration
+2. **Find speech examples** – “Search for interviews [person] has done and pull direct quotes that show how they talk—phrases they use, tone, vocabulary.”
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+3. **Describe the vibe** – “What’s their personality? Confident, shy, funny, formal? List 3–5 traits.”
 
-### Deployment
+4. **Define the role** – “This person is my assistant for [context, e.g. a Yale SOM course on Generative AI]. They should help with [specific tasks] while staying in character.”
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+5. **Ask for the full prompt** – “Write a system prompt for `prompt_chat.txt` that includes: (a) a short bio, (b) speech examples and phrases to mimic, (c) personality traits, and (d) their role as my assistant for [your use case].”
 
-### `npm run build` fails to minify
+**Example request you can paste into ChatGPT/Claude/etc.:**
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+> Write a system prompt for a chatbot. The AI should sound like [Person X]. Pull their Wikipedia page and 2–3 interviews. Include: (1) a brief bio, (2) 5–8 direct quotes showing how they speak, (3) personality traits, and (4) their role as my teaching assistant for [Course Name] taught by [Professor] at [School]. Put it all in a format I can paste into `prompt_chat.txt`.
