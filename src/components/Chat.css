@@ -2,7 +2,7 @@
 
 .chat-layout {
   display: flex;
-  height: 100vh;
+  height: 100%;
   width: 100%;
   overflow: hidden;
 }
@@ -957,6 +957,167 @@
   color: rgba(255, 255, 255, 0.45);
   text-transform: uppercase;
   margin: 0 0 0.6rem 0.5rem;
+}
+
+.time-series-chart-wrap {
+  width: 100%;
+}
+
+.tool-media-card {
+  margin-top: 0.85rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tool-media-preview-btn {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: zoom-in;
+}
+
+.tool-generated-image {
+  width: 100%;
+  max-width: 420px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: block;
+  cursor: zoom-in;
+}
+
+.tool-media-actions {
+  margin-top: 0.55rem;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.tool-media-download-btn {
+  padding: 0.42rem 0.75rem;
+  border-radius: 9px;
+  border: 1px solid rgba(129, 140, 248, 0.45);
+  background: rgba(99, 102, 241, 0.72);
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tool-media-hint {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.73rem;
+  font-style: italic;
+}
+
+.tool-lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 8, 18, 0.86);
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.tool-lightbox-content {
+  position: relative;
+  max-width: min(1100px, 94vw);
+  max-height: 92vh;
+  overflow: auto;
+  background: rgba(20, 20, 40, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+  padding: 1rem;
+}
+
+.tool-lightbox-close {
+  position: absolute;
+  right: 0.65rem;
+  top: 0.45rem;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 1.45rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.tool-lightbox-image {
+  max-width: min(1000px, 92vw);
+  max-height: 78vh;
+  border-radius: 10px;
+  display: block;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.tool-lightbox-chart {
+  width: min(1000px, 92vw);
+  min-height: 460px;
+}
+
+.tool-lightbox-actions {
+  margin-top: 0.75rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ── Video card (play_video) ──────────────────────────────────────────── */
+
+.video-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 340px;
+  overflow: hidden;
+}
+
+.video-thumbnail {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: block;
+}
+
+.video-card-content {
+  padding: 0.5rem 0.25rem;
+}
+
+.video-card-title {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #fff;
+  margin: 0 0 0.65rem;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.video-card-play-btn {
+  display: inline-block;
+  padding: 0.55rem 1rem;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.8), rgba(251, 113, 113, 0.75));
+  border: 1px solid rgba(248, 113, 113, 0.5);
+  border-radius: 8px;
+  color: white;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.18s;
+  cursor: pointer;
+}
+
+.video-card-play-btn:hover {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 1), rgba(251, 113, 113, 1));
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+  transform: translateY(-1px);
 }
 
 /* ── Empty state ─────────────────────────────────────────────────────────── */

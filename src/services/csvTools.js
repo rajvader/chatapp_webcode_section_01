@@ -1,69 +1,5 @@
-// ── Tool declarations (sent to Gemini so it knows what functions exist) ───────
-
-// IMPORTANT NOTE embedded in every description:
-// The user message always begins with "[CSV columns: col1, col2, ...]".
-// Always copy column names character-for-character from that list.
-// Never guess, abbreviate, or change capitalisation.
-
-const COL_NOTE = 'Use the exact column name as it appears in the [CSV columns: ...] header at the top of the message — copy it character-for-character, preserving spaces and capitalisation.';
-
-export const CSV_TOOL_DECLARATIONS = [
-  {
-    name: 'compute_column_stats',
-    description:
-      'Compute descriptive statistics (mean, median, std, min, max, count) for a numeric column. ' + COL_NOTE,
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        column: {
-          type: 'STRING',
-          description: 'Exact column name copied from [CSV columns: ...]. Example: if the header says "Favorite Count" pass "Favorite Count", not "favorite_count".',
-        },
-      },
-      required: ['column'],
-    },
-  },
-  {
-    name: 'get_value_counts',
-    description:
-      'Count occurrences of each unique value in a column (for categorical data). ' + COL_NOTE,
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        column: {
-          type: 'STRING',
-          description: 'Exact column name copied from [CSV columns: ...]. ' + COL_NOTE,
-        },
-        top_n: { type: 'NUMBER', description: 'How many top values to return (default 10)' },
-      },
-      required: ['column'],
-    },
-  },
-  {
-    name: 'get_top_tweets',
-    description:
-      'Return the top or bottom N tweets sorted by any metric, including the computed "engagement" column ' +
-      '(Favorite Count / View Count). Returns tweet text + all key metrics in a readable format. ' +
-      'Use this when someone asks for the best/worst/most/least performing tweets, ' +
-      'e.g. "show me the 10 most engaging tweets" or "what are the least viewed tweets". ' +
-      'The "engagement" column is always available once a CSV is loaded.',
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        sort_column: {
-          type: 'STRING',
-          description: 'Metric to sort by. Use "engagement" for engagement ratio, or any exact column name from [CSV columns: ...].',
-        },
-        n: { type: 'NUMBER', description: 'Number of tweets to return (default 10).' },
-        ascending: {
-          type: 'BOOLEAN',
-          description: 'false = highest first (top performers), true = lowest first (worst performers). Default false.',
-        },
-      },
-      required: ['sort_column'],
-    },
-  },
-];
+// This file has been renamed to dataTools.js. Please update your imports accordingly.
+export * from './dataTools';
 
 // ── Parse a CSV line, respecting quoted fields ────────────────────────────────
 
@@ -150,18 +86,14 @@ const SLIM_PATTERNS = [
 
 export const buildSlimCsv = (rows, headers) => {
   if (!rows.length || !headers.length) return '';
-
-  // Pick columns that match any slim pattern, preserving header order
-  const slimHeaders = headers.filter((h) => SLIM_PATTERNS.some((re) => re.test(h)));
-  if (!slimHeaders.length) return '';
-
+  // For YouTube JSON, just return the main fields as CSV for context
+  const slimHeaders = ['title', 'viewCount', 'likeCount', 'commentCount', 'duration', 'releaseDate', 'videoUrl'];
   const escapeCell = (v) => {
     const s = String(v ?? '');
     return s.includes(',') || s.includes('"') || s.includes('\n')
       ? `"${s.replace(/"/g, '""')}"`
       : s;
   };
-
   const lines = [
     slimHeaders.join(','),
     ...rows.map((r) => slimHeaders.map((h) => escapeCell(r[h])).join(',')),
@@ -176,27 +108,17 @@ export const buildSlimCsv = (rows, headers) => {
 
 export const enrichWithEngagement = (rows, headers) => {
   if (!rows.length) return { rows, headers };
-
-  // Auto-detect favorite and view columns
-  const favCol =
-    headers.find((h) => /favorite.?count/i.test(h)) ||
-    headers.find((h) => /^likes?$/i.test(h));
-  const viewCol =
-    headers.find((h) => /view.?count/i.test(h)) ||
-    headers.find((h) => /^views?$/i.test(h));
-
-  if (!favCol || !viewCol) return { rows, headers };
-  if (headers.includes('engagement')) return { rows, headers }; // already added
-
+  // YouTube JSON: likeCount and viewCount
+  const likeCol = headers.find((h) => /likeCount/i.test(h));
+  const viewCol = headers.find((h) => /viewCount/i.test(h));
+  if (!likeCol || !viewCol) return { rows, headers };
+  if (headers.includes('engagement')) return { rows, headers };
   const enriched = rows.map((r) => {
-    const fav  = parseFloat(r[favCol]);
-    const view = parseFloat(r[viewCol]);
-    const eng  = !isNaN(fav) && !isNaN(view) && view > 0
-      ? +(fav / view).toFixed(6)
-      : null;
+    const likes = parseFloat(r[likeCol]);
+    const views = parseFloat(r[viewCol]);
+    const eng = !isNaN(likes) && !isNaN(views) && views > 0 ? +(likes / views).toFixed(6) : null;
     return { ...r, engagement: eng };
   });
-
   return { rows: enriched, headers: [...headers, 'engagement'] };
 };
 
@@ -256,19 +178,20 @@ export const computeDatasetSummary = (rows, headers) => {
 
 // ── Client-side tool executor ─────────────────────────────────────────────────
 
-export const executeTool = (toolName, args, rows) => {
-  const availableHeaders = rows.length ? Object.keys(rows[0]) : [];
+export const executeTool = async (toolName, args, rows, context = {}) => {
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const availableHeaders = safeRows.length ? Object.keys(safeRows[0]) : [];
   console.group(`[CSV Tool] ${toolName}`);
   console.log('args:', args);
-  console.log('rows loaded:', rows.length);
+  console.log('rows loaded:', safeRows.length);
   console.log('available headers:', availableHeaders);
   console.groupEnd();
 
   switch (toolName) {
     case 'compute_column_stats': {
-      const col = resolveCol(rows, args.column);
+      const col = resolveCol(safeRows, args.column);
       console.log(`[compute_column_stats] resolved column: "${args.column}" → "${col}"`);
-      const vals = numericValues(rows, col);
+      const vals = numericValues(safeRows, col);
       if (!vals.length)
         return { error: `No numeric values found in column "${col}". Available columns: ${availableHeaders.join(', ')}` };
       const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
@@ -286,11 +209,11 @@ export const executeTool = (toolName, args, rows) => {
     }
 
     case 'get_value_counts': {
-      const col = resolveCol(rows, args.column);
+      const col = resolveCol(safeRows, args.column);
       console.log(`[get_value_counts] resolved column: "${args.column}" → "${col}"`);
       const topN = args.top_n || 10;
       const counts = {};
-      rows.forEach((r) => {
+      safeRows.forEach((r) => {
         const v = r[col];
         if (v !== undefined && v !== '') counts[v] = (counts[v] || 0) + 1;
       });
@@ -299,28 +222,29 @@ export const executeTool = (toolName, args, rows) => {
         .slice(0, topN);
       return {
         column: col,
-        total_rows: rows.length,
+        total_rows: safeRows.length,
         value_counts: Object.fromEntries(sorted),
       };
     }
 
-    case 'get_top_tweets': {
-      const sortCol = resolveCol(rows, args.sort_column) || args.sort_column;
+    case 'get_top_items': {
+      const sortCol = resolveCol(safeRows, args.sort_column) || args.sort_column;
       console.log(`[get_top_tweets] sort="${sortCol}" n=${args.n} asc=${args.ascending}`);
       const n   = args.n || 10;
       const asc = args.ascending ?? false;
 
-      // Detect text column for display
+      // Detect text column for display (YouTube title or Twitter text)
       const textCol =
+        availableHeaders.find((h) => /^title$/i.test(h)) ||
         availableHeaders.find((h) => /^text$/i.test(h)) ||
         availableHeaders.find((h) => /text|content|tweet|body/i.test(h));
 
       // Detect key metric columns
-      const favCol  = availableHeaders.find((h) => /favorite.?count/i.test(h));
+      const favCol  = availableHeaders.find((h) => /favorite.?count/i.test(h)) || availableHeaders.find((h) => /like.?count/i.test(h));
       const viewCol = availableHeaders.find((h) => /view.?count/i.test(h));
       const engCol  = availableHeaders.includes('engagement') ? 'engagement' : null;
 
-      const sorted = [...rows].sort((a, b) => {
+      const sorted = [...safeRows].sort((a, b) => {
         const av = parseFloat(a[sortCol]);
         const bv = parseFloat(b[sortCol]);
         if (!isNaN(av) && !isNaN(bv)) return asc ? av - bv : bv - av;
@@ -344,6 +268,159 @@ export const executeTool = (toolName, args, rows) => {
         direction: asc ? 'ascending (lowest first)' : 'descending (highest first)',
         count: topRows.length,
         tweets: topRows,
+      };
+    }
+
+    case 'generateImage': {
+      const prompt = String(args.prompt || '').trim();
+      if (!prompt) return { error: 'prompt is required for generateImage' };
+
+      const anchorImage = args.anchor_image || context.anchorImage || null;
+      // Call backend endpoint to fetch Pollinations image as base64
+      return fetch('/api/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, anchorImage }),
+      })
+        .then(async (res) => {
+          if (!res.ok) throw new Error('Backend image proxy failed');
+          const data = await res.json();
+          return {
+            inlineData: {
+              mimeType: data.mimeType,
+              data: data.data,
+            },
+            _chartType: 'generatedImage',
+            prompt,
+            anchorUsed: !!anchorImage,
+            url: data.url,
+            fileName: data.fileName,
+            message: 'Generated image preview ready.',
+          };
+        })
+        .catch((err) => ({ error: 'Image generation failed: ' + err.message }));
+    }
+
+    case 'plot_metric_vs_time': {
+      const metricCol = resolveCol(safeRows, args.metric);
+      const timeCol = resolveCol(safeRows, args.time_column);
+      console.log(`[plot_metric_vs_time] metric="${metricCol}" time="${timeCol}"`);
+
+      // Build time-series data points
+      const dataPoints = safeRows
+        .map((r) => {
+          const time = r[timeCol];
+          const val = parseFloat(r[metricCol]);
+          if (!time || isNaN(val)) return null;
+          return { time, value: val };
+        })
+        .filter(Boolean)
+        .sort((a, b) => new Date(a.time) - new Date(b.time));
+
+      if (!dataPoints.length)
+        return { error: `No valid data points for "${metricCol}" vs "${timeCol}". Available columns: ${availableHeaders.join(', ')}` };
+
+      return {
+        _chartType: 'timeSeries',
+        metric: metricCol,
+        timeColumn: timeCol,
+        data: dataPoints.map((d) => ({ name: d.time, [metricCol]: d.value })),
+        count: dataPoints.length,
+      };
+    }
+
+    case 'play_video': {
+      const titleQuery = (args.title || '').toLowerCase().trim();
+      
+      // YouTube-specific column detection - exact names first
+      const titleCol = availableHeaders.find((h) => /^title$/i.test(h));
+      const urlCol = availableHeaders.find((h) => /^videoUrl$/i.test(h));
+      const thumbCol = availableHeaders.find((h) => /^thumbnailUrl$/i.test(h));
+      const viewCol = availableHeaders.find((h) => /^viewCount$/i.test(h));
+      const likeCol = availableHeaders.find((h) => /like.?count/i.test(h));
+
+      if (!titleCol || !urlCol) {
+        return { error: `Cannot find required columns. Have: ${availableHeaders.join(', ')}` };
+      }
+
+      let bestMatch = null;
+
+      // Handle special queries
+      if (/^(first|1st|one)$/i.test(titleQuery) && safeRows.length > 0) {
+        bestMatch = safeRows[0];
+      } else if (/^(last|latest)$/i.test(titleQuery) && safeRows.length > 0) {
+        bestMatch = safeRows[safeRows.length - 1];
+      } else if (/^(most\s*viewed|most\s*popular|top\s*video|highest\s*views)$/i.test(titleQuery)) {
+        // Find video with most views
+        if (viewCol && safeRows.length > 0) {
+          bestMatch = safeRows.reduce((max, r) => {
+            const maxViews = parseFloat(max[viewCol]) || 0;
+            const rViews = parseFloat(r[viewCol]) || 0;
+            return rViews > maxViews ? r : max;
+          });
+        } else if (safeRows.length > 0) {
+          bestMatch = safeRows[0];
+        }
+      } else if (/^(most\s*liked|most\s*loved|highest\s*likes|top\s*liked|most\s*like)/i.test(titleQuery)) {
+        // Find video with most likes
+        if (likeCol && safeRows.length > 0) {
+          bestMatch = safeRows.reduce((max, r) => {
+            const maxLikes = parseFloat(max[likeCol]) || 0;
+            const rLikes = parseFloat(r[likeCol]) || 0;
+            return rLikes > maxLikes ? r : max;
+          });
+        } else if (safeRows.length > 0) {
+          bestMatch = safeRows[0];
+        }
+      } else {
+        // Search by title or partial match
+        for (const r of safeRows) {
+          const rowTitle = String(r[titleCol] || '').toLowerCase();
+          if (rowTitle.includes(titleQuery)) {
+            bestMatch = r;
+            break;
+          }
+        }
+      }
+
+      if (!bestMatch || !bestMatch[titleCol]) {
+        return { error: `No video found matching "${args.title}". Available: ${safeRows.slice(0, 3).map(r => r[titleCol]).join(', ')}` };
+      }
+
+      const videoTitle = bestMatch[titleCol];
+      const videoUrl = bestMatch[urlCol];
+      const thumbnailUrl = thumbCol ? bestMatch[thumbCol] : null;
+
+      if (!videoUrl) {
+        return { error: `Video "${videoTitle}" found but missing URL.` };
+      }
+
+      return {
+        _playVideo: true,
+        title: videoTitle,
+        thumbnailUrl,
+        url: videoUrl,
+        message: `Playing: "${videoTitle}"`,
+      };
+    }
+
+    case 'compute_stats_json': {
+      const col = resolveCol(safeRows, args.field);
+      console.log(`[compute_stats_json] resolved field: "${args.field}" → "${col}"`);
+      const vals = numericValues(safeRows, col);
+      if (!vals.length)
+        return { error: `No numeric values found in field "${col}". Available columns: ${availableHeaders.join(', ')}` };
+      const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+      const sorted = [...vals].sort((a, b) => a - b);
+      const variance = vals.reduce((a, b) => a + (b - mean) ** 2, 0) / vals.length;
+      return {
+        field: col,
+        count: vals.length,
+        mean: fmt(mean),
+        median: fmt(median(sorted)),
+        std: fmt(Math.sqrt(variance)),
+        min: Math.min(...vals),
+        max: Math.max(...vals),
       };
     }
 

@@ -248,3 +248,4 @@ To make the AI sound like a specific person (celebrity, character, or role), ask
 **Example request you can paste into ChatGPT/Claude/etc.:**
 
 > Write a system prompt for a chatbot. The AI should sound like [Person X]. Pull their Wikipedia page and 2–3 interviews. Include: (1) a brief bio, (2) 5–8 direct quotes showing how they speak, (3) personality traits, and (4) their role as my teaching assistant for [Course Name] taught by [Professor] at [School]. Put it all in a format I can paste into `prompt_chat.txt`.
+# MGT_Hw5_chatapp

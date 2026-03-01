@@ -1,9 +1,9 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { CSV_TOOL_DECLARATIONS } from './csvTools';
+import { CSV_TOOL_DECLARATIONS } from './dataTools';
 
 const genAI = new GoogleGenerativeAI(process.env.REACT_APP_GEMINI_API_KEY || '');
 
-const MODEL = 'gemini-2.0-flash';
+const MODEL = 'gemini-2.5-flash';
 
 const SEARCH_TOOL = { googleSearch: {} };
 const CODE_EXEC_TOOL = { codeExecution: {} };
@@ -128,7 +128,9 @@ export const streamChat = async function* (history, newMessage, imageParts = [],
 // executeFn(toolName, args) → plain JS object with the result
 // Returns the final text response from the model.
 
-export const chatWithCsvTools = async (history, newMessage, csvHeaders, executeFn) => {
+
+// Accepts imageParts as third argument
+export const chatWithCsvTools = async (history, newMessage, imageParts, csvHeaders, executeFn) => {
   const systemInstruction = await loadSystemPrompt();
   const model = genAI.getGenerativeModel({
     model: MODEL,
@@ -153,12 +155,20 @@ export const chatWithCsvTools = async (history, newMessage, csvHeaders, executeF
 
   const chat = model.startChat({ history: chatHistory });
 
-  // Include column names so the model can match user intent to exact column names
+  // Include data fields so the model can match user intent to exact JSON properties
   const msgWithContext = csvHeaders?.length
-    ? `[CSV columns: ${csvHeaders.join(', ')}]\n\n${newMessage}`
+    ? `[Data fields: ${csvHeaders.join(', ')}]\n\n${newMessage}`
     : newMessage;
 
-  let response = (await chat.sendMessage(msgWithContext)).response;
+  // Pass both text and image parts
+  const parts = [
+    { text: msgWithContext },
+    ...(imageParts || []).map((img) => ({
+      inlineData: { mimeType: img.mimeType || 'image/png', data: img.data },
+    })),
+  ].filter((p) => p.text !== undefined || p.inlineData !== undefined);
+
+  let response = (await chat.sendMessage(parts)).response;
 
   // Accumulate chart payloads and a log of every tool call made
   const charts = [];
@@ -172,22 +182,30 @@ export const chatWithCsvTools = async (history, newMessage, csvHeaders, executeF
 
     const { name, args } = funcCall.functionCall;
     console.log('[CSV Tool]', name, args);
-    const toolResult = executeFn(name, args);
+    const toolResult = await executeFn(name, args);
     console.log('[CSV Tool result]', toolResult);
 
     // Log the call for persistence
     toolCalls.push({ name, args, result: toolResult });
 
     // Capture chart payloads so the UI can render them
-    if (toolResult?._chartType) {
+    if (toolResult?._chartType || toolResult?._playVideo) {
       charts.push(toolResult);
     }
 
+    // CRITICAL FIX: Strip massive base64 data before sending back to Gemini
+    const { inlineData, ...geminiSafeResult } = toolResult || {};
+
     response = (
       await chat.sendMessage([
-        { functionResponse: { name, response: { result: toolResult } } },
+        { functionResponse: { name, response: { result: geminiSafeResult } } },
       ])
     ).response;
+
+    // CRITICAL FIX: If the tool failed, break the loop so Lisa doesn't have a panic attack!
+    if (geminiSafeResult.error) {
+      break;
+    }
   }
 
   return { text: response.text(), charts, toolCalls };
